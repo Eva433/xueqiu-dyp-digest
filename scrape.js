@@ -83,15 +83,35 @@ function log(msg) {
     let posts = statuses.filter((s) => s.created_at >= cutoff);
     if (posts.length === 0) posts = statuses.slice(0, 20);
 
-    const output = posts.map((s) => ({
-      id: s.id,
-      created_at: new Date(s.created_at).toISOString(),
-      text: stripHtml(s.description || s.text),
-      retweet_count: s.retweet_count || 0,
-      reply_count: s.reply_count || 0,
-      fav_count: s.fav_count || 0,
-      url: `https://xueqiu.com/${s.user_id || USER_ID}/${s.id}`,
-    }));
+    const output = posts.map((s) => {
+      const post = {
+        id: s.id,
+        created_at: new Date(s.created_at).toISOString(),
+        text: stripHtml(s.description || s.text),
+        retweet_count: s.retweet_count || 0,
+        reply_count: s.reply_count || 0,
+        fav_count: s.fav_count || 0,
+        like_count: s.like_count || 0,
+        url: `https://xueqiu.com/${s.user_id || USER_ID}/${s.id}`,
+      };
+
+      // Include the original post being replied to / retweeted
+      if (s.retweeted_status) {
+        const rt = s.retweeted_status;
+        post.retweeted_status = {
+          id: rt.id,
+          title: rt.title || '',
+          text: stripHtml(rt.description || rt.text),
+          author: rt.user ? rt.user.screen_name : '',
+          created_at: new Date(rt.created_at).toISOString(),
+          url: `https://xueqiu.com/${rt.user_id || rt.user?.id}/${rt.id}`,
+          is_column: rt.is_column || false,
+          stock_correlation: rt.stockCorrelation || [],
+        };
+      }
+
+      return post;
+    });
 
     process.stdout.write(JSON.stringify(output, null, 2) + '\n');
     log(`Done. Found ${output.length} posts.`);
